@@ -1,25 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
-use App\Models\User;
-use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
 class DatabaseSeeder extends Seeder
 {
-    use WithoutModelEvents;
-
     /**
-     * Seed the application's database.
+     * Seed the application's database, the order follows the foreign keys.
      */
     public function run(): void
     {
-        // User::factory(10)->create();
-
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
+        $this->call([
+            CountrySeeder::class,
+            UserSeeder::class,
+            PhoneSeeder::class,
+            PostSeeder::class,
+            RoleSeeder::class,
+            MechanicSeeder::class,
+            OrderSeeder::class,
+            VideoSeeder::class,
+            ImageSeeder::class,
+            CommentSeeder::class,
+            TagSeeder::class,
+            CategorySeeder::class,
         ]);
     }
 }

@@ -1,0 +1,168 @@
+<?php
+
+declare(strict_types=1);
+
+use App\Http\Controllers\Phone\PhoneUserController;
+use App\Http\Controllers\Post\PostUserController;
+use App\Http\Controllers\Role\RoleUserController;
+use App\Http\Controllers\User\UserPhoneController;
+use App\Http\Controllers\User\UserPostController;
+use App\Http\Controllers\User\UserRoleController;
+use App\Http\Controllers\Car\CarOwnerController;
+use App\Http\Controllers\Country\CountryPostController;
+use App\Http\Controllers\Mechanic\MechanicOwnerController;
+use App\Http\Controllers\Owner\OwnerMechanicController;
+use App\Http\Controllers\Post\PostCountryController;
+use Illuminate\Support\Facades\Route;
+
+/*
+|--------------------------------------------------------------------------
+| One To One: User hasOne Phone
+|--------------------------------------------------------------------------
+*/
+Route::prefix('one-to-one')->name('one-to-one.')->group(function (): void {
+    // hasOne side
+    Route::get('users', [UserPhoneController::class, 'index'])->name('users.index');
+    Route::get('users/search', [UserPhoneController::class, 'search'])->name('users.search');
+    Route::get('users/{user}/phone', [UserPhoneController::class, 'show'])->name('users.phone.show');
+    Route::get('users/{user}/phone/exists', [UserPhoneController::class, 'exists'])->name('users.phone.exists');
+    Route::post('users/{user}/phone/create', [UserPhoneController::class, 'create'])->name('users.phone.create');
+    Route::post('users/{user}/phone/save', [UserPhoneController::class, 'save'])->name('users.phone.save');
+    Route::post('users/{user}/phone/first-or-create', [UserPhoneController::class, 'firstOrCreate'])->name('users.phone.first-or-create');
+    Route::put('users/{user}/phone', [UserPhoneController::class, 'updateOrCreate'])->name('users.phone.update-or-create');
+    Route::patch('users/{user}/phone', [UserPhoneController::class, 'update'])->name('users.phone.update');
+    Route::delete('users/{user}/phone', [UserPhoneController::class, 'destroy'])->name('users.phone.destroy');
+
+    // belongsTo side
+    Route::get('phones', [PhoneUserController::class, 'index'])->name('phones.index');
+    Route::get('phones/by-user/{user}', [PhoneUserController::class, 'byUser'])->name('phones.by-user');
+    Route::get('phones/{phone}/user', [PhoneUserController::class, 'show'])->name('phones.user.show');
+    Route::get('phones/{phone}/owner/{user}', [PhoneUserController::class, 'isOwner'])->name('phones.user.is-owner');
+    Route::put('phones/{phone}/user', [PhoneUserController::class, 'associate'])->name('phones.user.associate');
+    Route::patch('phones/{phone}/user', [PhoneUserController::class, 'updateUser'])->name('phones.user.update');
+    Route::delete('phones/{phone}/user', [PhoneUserController::class, 'destroyUser'])->name('phones.user.destroy');
+    Route::delete('phones/{phone}', [PhoneUserController::class, 'destroy'])->name('phones.destroy');
+});
+
+/*
+|--------------------------------------------------------------------------
+| One To Many: User hasMany Post
+|--------------------------------------------------------------------------
+*/
+Route::prefix('one-to-many')->name('one-to-many.')->group(function (): void {
+    // hasMany side
+    Route::get('users', [UserPostController::class, 'index'])->name('users.index');
+    Route::get('users/stats', [UserPostController::class, 'stats'])->name('users.stats');
+    Route::get('users/search', [UserPostController::class, 'search'])->name('users.search');
+    Route::get('users/{user}/posts', [UserPostController::class, 'list'])->name('users.posts.list');
+    Route::get('users/{user}/posts/count', [UserPostController::class, 'count'])->name('users.posts.count');
+    Route::get('users/{user}/posts/latest', [UserPostController::class, 'latest'])->name('users.posts.latest');
+    Route::get('users/{user}/posts/filter', [UserPostController::class, 'filter'])->name('users.posts.filter');
+    Route::get('users/{user}/posts/summary', [UserPostController::class, 'summary'])->name('users.posts.summary');
+    Route::get('users/{user}/posts/{post}', [UserPostController::class, 'find'])->whereNumber('post')->name('users.posts.find');
+    Route::post('users/{user}/posts/create', [UserPostController::class, 'create'])->name('users.posts.create');
+    Route::post('users/{user}/posts/create-many', [UserPostController::class, 'createMany'])->name('users.posts.create-many');
+    Route::post('users/{user}/posts/save', [UserPostController::class, 'save'])->name('users.posts.save');
+    Route::post('users/{user}/posts/save-many', [UserPostController::class, 'saveMany'])->name('users.posts.save-many');
+    Route::post('users/{user}/posts/first-or-create', [UserPostController::class, 'firstOrCreate'])->name('users.posts.first-or-create');
+    Route::put('users/{user}/posts/update-or-create', [UserPostController::class, 'updateOrCreate'])->name('users.posts.update-or-create');
+    Route::post('users/{user}/posts/{post}/adopt', [UserPostController::class, 'adopt'])->name('users.posts.adopt');
+    Route::patch('users/{user}/posts', [UserPostController::class, 'updateAll'])->name('users.posts.update-all');
+    Route::patch('users/{user}/posts/{post}', [UserPostController::class, 'update'])->whereNumber('post')->name('users.posts.update');
+    Route::delete('users/{user}/posts', [UserPostController::class, 'destroyAll'])->name('users.posts.destroy-all');
+    Route::delete('users/{user}/posts/{post}', [UserPostController::class, 'destroy'])->whereNumber('post')->name('users.posts.destroy');
+
+    // belongsTo side
+    Route::get('posts', [PostUserController::class, 'index'])->name('posts.index');
+    Route::get('posts/orphans', [PostUserController::class, 'orphans'])->name('posts.orphans');
+    Route::get('posts/search', [PostUserController::class, 'search'])->name('posts.search');
+    Route::get('posts/by-user/{user}', [PostUserController::class, 'byUser'])->name('posts.by-user');
+    Route::get('posts/{post}/user', [PostUserController::class, 'show'])->name('posts.user.show');
+    Route::get('posts/{post}/author/{user}', [PostUserController::class, 'isAuthor'])->name('posts.user.is-author');
+    Route::put('posts/{post}/user', [PostUserController::class, 'associate'])->name('posts.user.associate');
+    Route::delete('posts/{post}/user', [PostUserController::class, 'dissociate'])->name('posts.user.dissociate');
+    Route::patch('posts/{post}/user', [PostUserController::class, 'updateUser'])->name('posts.user.update');
+    Route::delete('posts/{post}/user/destroy', [PostUserController::class, 'destroyUser'])->name('posts.user.destroy');
+    Route::delete('posts/{post}', [PostUserController::class, 'destroy'])->name('posts.destroy');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Many To Many: User belongsToMany Role
+|--------------------------------------------------------------------------
+*/
+Route::prefix('many-to-many')->name('many-to-many.')->group(function (): void {
+    // user side
+    Route::get('users', [UserRoleController::class, 'index'])->name('users.index');
+    Route::get('users/{user}/roles', [UserRoleController::class, 'show'])->name('users.roles.show');
+    Route::get('users/{user}/roles/by-pivot', [UserRoleController::class, 'byPivot'])->name('users.roles.by-pivot');
+    Route::get('users/{user}/roles/has', [UserRoleController::class, 'hasRole'])->name('users.roles.has');
+    Route::post('users/{user}/roles', [UserRoleController::class, 'attach'])->name('users.roles.attach');
+    Route::put('users/{user}/roles/sync', [UserRoleController::class, 'sync'])->name('users.roles.sync');
+    Route::put('users/{user}/roles/sync-without-detaching', [UserRoleController::class, 'syncWithoutDetaching'])->name('users.roles.sync-without-detaching');
+    Route::post('users/{user}/roles/toggle', [UserRoleController::class, 'toggle'])->name('users.roles.toggle');
+    Route::patch('users/{user}/roles/{role}/pivot', [UserRoleController::class, 'updatePivot'])->whereNumber('role')->name('users.roles.update-pivot');
+    Route::delete('users/{user}/roles', [UserRoleController::class, 'detachAll'])->name('users.roles.detach-all');
+    Route::delete('users/{user}/roles/{role}', [UserRoleController::class, 'detach'])->whereNumber('role')->name('users.roles.detach');
+
+    // role side
+    Route::get('roles', [RoleUserController::class, 'index'])->name('roles.index');
+    Route::get('roles/{role}/users', [RoleUserController::class, 'show'])->name('roles.users.show');
+    Route::post('roles/{role}/users', [RoleUserController::class, 'attach'])->name('roles.users.attach');
+    Route::put('roles/{role}/users/sync', [RoleUserController::class, 'sync'])->name('roles.users.sync');
+    Route::delete('roles/{role}/users', [RoleUserController::class, 'detachAll'])->name('roles.users.detach-all');
+    Route::delete('roles/{role}/users/{user}', [RoleUserController::class, 'detach'])->whereNumber('user')->name('roles.users.detach');
+});
+
+
+/*
+|--------------------------------------------------------------------------
+| Has One Through: Mechanic hasOneThrough Owner (through Car)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('has-one-through')->name('has-one-through.')->group(function (): void {
+    // mechanic side
+    Route::get('mechanics', [MechanicOwnerController::class, 'index'])->name('mechanics.index');
+    Route::get('mechanics/search', [MechanicOwnerController::class, 'search'])->name('mechanics.search');
+    Route::get('mechanics/{mechanic}/owner', [MechanicOwnerController::class, 'show'])->name('mechanics.owner.show');
+    Route::get('mechanics/{mechanic}/owner/fluent', [MechanicOwnerController::class, 'fluent'])->name('mechanics.owner.fluent');
+    Route::get('mechanics/{mechanic}/owner/exists', [MechanicOwnerController::class, 'exists'])->name('mechanics.owner.exists');
+    Route::patch('mechanics/{mechanic}/owner', [MechanicOwnerController::class, 'update'])->name('mechanics.owner.update');
+    Route::delete('mechanics/{mechanic}/owner', [MechanicOwnerController::class, 'destroy'])->name('mechanics.owner.destroy');
+    Route::get('mechanics/{mechanic}/car', [MechanicOwnerController::class, 'car'])->name('mechanics.car.show');
+    Route::post('mechanics/{mechanic}/car', [MechanicOwnerController::class, 'createCar'])->name('mechanics.car.create');
+
+    // intermediate side
+    Route::post('cars/{car}/owner', [CarOwnerController::class, 'create'])->name('cars.owner.create');
+
+    // owner side
+    Route::get('owners', [OwnerMechanicController::class, 'index'])->name('owners.index');
+    Route::get('owners/by-mechanic/{mechanic}', [OwnerMechanicController::class, 'byMechanic'])->name('owners.by-mechanic');
+    Route::get('owners/{owner}/mechanic', [OwnerMechanicController::class, 'show'])->name('owners.mechanic.show');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Has Many Through: Country hasManyThrough Post (through User)
+|--------------------------------------------------------------------------
+*/
+Route::prefix('has-many-through')->name('has-many-through.')->group(function (): void {
+    // country side
+    Route::get('countries', [CountryPostController::class, 'index'])->name('countries.index');
+    Route::get('countries/stats', [CountryPostController::class, 'stats'])->name('countries.stats');
+    Route::get('countries/search', [CountryPostController::class, 'search'])->name('countries.search');
+    Route::get('countries/{country}/posts', [CountryPostController::class, 'show'])->name('countries.posts.show');
+    Route::get('countries/{country}/posts/count', [CountryPostController::class, 'count'])->name('countries.posts.count');
+    Route::get('countries/{country}/posts/latest', [CountryPostController::class, 'latest'])->name('countries.posts.latest');
+    Route::get('countries/{country}/posts/filter', [CountryPostController::class, 'filter'])->name('countries.posts.filter');
+    Route::get('countries/{country}/posts/paginate', [CountryPostController::class, 'paginate'])->name('countries.posts.paginate');
+    Route::get('countries/{country}/posts/{post}', [CountryPostController::class, 'post'])->whereNumber('post')->name('countries.posts.find');
+    Route::get('countries/{country}/users', [CountryPostController::class, 'users'])->name('countries.users');
+    Route::patch('countries/{country}/posts', [CountryPostController::class, 'update'])->name('countries.posts.update');
+    Route::delete('countries/{country}/posts', [CountryPostController::class, 'destroy'])->name('countries.posts.destroy');
+
+    // post side
+    Route::get('posts', [PostCountryController::class, 'index'])->name('posts.index');
+    Route::get('posts/by-country/{code}', [PostCountryController::class, 'byCountry'])->name('posts.by-country');
+    Route::get('posts/{post}/country', [PostCountryController::class, 'show'])->name('posts.country.show');
+});
