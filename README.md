@@ -41,6 +41,7 @@ Every relationship below has a working JSON API in this repository. Business log
 | Many To Many | [Laravel docs](https://laravel.com/docs/eloquent-relationships#many-to-many) | [`UserRoleController`](app/Http/Controllers/User/UserRoleController.php), [`RoleUserController`](app/Http/Controllers/Role/RoleUserController.php) | [`app/Actions/User`](app/Actions/User), [`app/Actions/Role`](app/Actions/Role) | `GET /api/many-to-many/roles` |
 | Has One Through | [Laravel docs](https://laravel.com/docs/eloquent-relationships#has-one-through) | [`MechanicOwnerController`](app/Http/Controllers/Mechanic/MechanicOwnerController.php), [`CarOwnerController`](app/Http/Controllers/Car/CarOwnerController.php), [`OwnerMechanicController`](app/Http/Controllers/Owner/OwnerMechanicController.php) | [`app/Actions/Mechanic`](app/Actions/Mechanic), [`app/Actions/Car`](app/Actions/Car), [`app/Actions/Owner`](app/Actions/Owner) | `GET /api/has-one-through/mechanics` |
 | Has Many Through | [Laravel docs](https://laravel.com/docs/eloquent-relationships#has-many-through) | [`CountryPostController`](app/Http/Controllers/Country/CountryPostController.php), [`PostCountryController`](app/Http/Controllers/Post/PostCountryController.php) | [`app/Actions/Country`](app/Actions/Country), [`app/Actions/Post`](app/Actions/Post) | `GET /api/has-many-through/countries/stats` |
+| Polymorphic One To One | [Laravel docs](https://laravel.com/docs/eloquent-relationships#one-to-one-polymorphic-relations) | [`ImageableController`](app/Http/Controllers/Image/ImageableController.php), [`ImageController`](app/Http/Controllers/Image/ImageController.php) | [`app/Actions/Image`](app/Actions/Image) | `GET /api/polymorphic-one-to-one/images` |
 
 The routes are in [`routes/api.php`](routes/api.php). Run `php artisan route:list --path=api` to see all of them.
 
@@ -65,7 +66,7 @@ Controller returns $this->success() / $this->created()   ← ApiResponse trait
 | Part | Location | Responsibility |
 |------|----------|----------------|
 | Controller | [`app/Http/Controllers`](app/Http/Controllers) | Read input, call one action, return JSON |
-| Action | [`app/Actions`](app/Actions) | One operation per class with an `execute()` method. Folders are named after models: `User`, `Phone`, `Post`, `Role`, `Mechanic`, `Car`, `Owner`, `Country` |
+| Action | [`app/Actions`](app/Actions) | One operation per class with an `execute()` method. Folders are named after models: `User`, `Phone`, `Post`, `Role`, `Mechanic`, `Car`, `Owner`, `Country`, `Image` |
 | Form request | [`app/Http/Requests`](app/Http/Requests) | Validation rules |
 | JSON trait | [`app/Traits/ApiResponse.php`](app/Traits/ApiResponse.php) | `success()`, `created()`, `error()`, `notFound()`, `conflict()`. Used by the base [`Controller`](app/Http/Controllers/Controller.php), so every controller returns JSON |
 | Exceptions | [`app/Exceptions`](app/Exceptions) | `ResourceNotFoundException` (404) and `ResourceConflictException` (409) render themselves as JSON |
@@ -1131,6 +1132,42 @@ class Image extends Model
 $post->image;          // Image|null
 $image->imageable;     // Post or User instance
 ```
+
+### Implemented in this repository
+
+- Official docs: [One To One (Polymorphic)](https://laravel.com/docs/eloquent-relationships#one-to-one-polymorphic-relations)
+- Controllers: [`ImageableController`](app/Http/Controllers/Image/ImageableController.php) and [`ImageController`](app/Http/Controllers/Image/ImageController.php)
+- Actions: [`app/Actions/Image`](app/Actions/Image)
+- Seeder: [`ImageSeeder`](database/seeders/ImageSeeder.php)
+- Base URL: `/api/polymorphic-one-to-one`
+- Morph map: `user`, `post`, `video` in [`AppServiceProvider`](app/Providers/AppServiceProvider.php), so `imageable_type` stores `user` and not `App\Models\User`
+
+One action serves both parent types. `{type}` in the URL is a morph map alias (`user` or `post`) and [`ResolveImageable`](app/Actions/Image/ResolveImageable.php) turns it into the model.
+
+**Parent side: `User::image()` and `Post::image()` (`morphOne`)**
+
+| Method | URL | Action | Eloquent |
+|--------|-----|--------|----------|
+| `GET` | `/{type}?has_image=0` | [`ListImageables`](app/Actions/Image/ListImageables.php) | `with('image')`, `has()`, `doesntHave()` |
+| `GET` | `/{type}/{id}/image` | [`ShowImageableImage`](app/Actions/Image/ShowImageableImage.php) | `$model->image` |
+| `GET` | `/{type}/{id}/image/exists` | [`CheckImageableHasImage`](app/Actions/Image/CheckImageableHasImage.php) | `image()->exists()` |
+| `POST` | `/{type}/{id}/image` | [`CreateImageableImage`](app/Actions/Image/CreateImageableImage.php) | `image()->create()` |
+| `PUT` | `/{type}/{id}/image` | [`UpdateOrCreateImageableImage`](app/Actions/Image/UpdateOrCreateImageableImage.php) | `image()->updateOrCreate([], $data)` |
+| `PATCH` | `/{type}/{id}/image` | [`UpdateImageableImage`](app/Actions/Image/UpdateImageableImage.php) | `$model->image->update()` |
+| `DELETE` | `/{type}/{id}/image` | [`DeleteImageableImage`](app/Actions/Image/DeleteImageableImage.php) | `$model->image->delete()` |
+
+**Child side: `Image::imageable()` (`morphTo`)**
+
+| Method | URL | Action | Eloquent |
+|--------|-----|--------|----------|
+| `GET` | `/images?type=user` | [`ListImagesWithImageable`](app/Actions/Image/ListImagesWithImageable.php) | `with('imageable')`, `where('imageable_type', ...)` |
+| `GET` | `/images/details` | [`ListImagesWithImageableDetails`](app/Actions/Image/ListImagesWithImageableDetails.php) | `morphWith()` |
+| `GET` | `/images/search?term=Karim` | [`SearchImagesByImageableName`](app/Actions/Image/SearchImagesByImageableName.php) | `whereHasMorph()` |
+| `GET` | `/images/{image}/imageable` | [`ShowImageable`](app/Actions/Image/ShowImageable.php) | `$image->imageable` |
+| `PUT` | `/images/{image}/imageable` | [`ReassignImage`](app/Actions/Image/ReassignImage.php) | `imageable()->associate()` |
+| `DELETE` | `/images/{image}` | [`DeleteImage`](app/Actions/Image/DeleteImage.php) | `delete()` |
+
+The `images` table has a unique index on `(imageable_type, imageable_id)`, so a parent can own only one image. Create returns `409` when the parent already has one. Seed data: images for users 1 to 3 and posts 1 to 3.
 
 ---
 

@@ -13,6 +13,8 @@ use App\Http\Controllers\Country\CountryPostController;
 use App\Http\Controllers\Mechanic\MechanicOwnerController;
 use App\Http\Controllers\Owner\OwnerMechanicController;
 use App\Http\Controllers\Post\PostCountryController;
+use App\Http\Controllers\Image\ImageableController;
+use App\Http\Controllers\Image\ImageController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -166,3 +168,29 @@ Route::prefix('has-many-through')->name('has-many-through.')->group(function ():
     Route::get('posts/by-country/{code}', [PostCountryController::class, 'byCountry'])->name('posts.by-country');
     Route::get('posts/{post}/country', [PostCountryController::class, 'show'])->name('posts.country.show');
 });
+
+/*
+|--------------------------------------------------------------------------
+| Polymorphic One To One: User and Post morphOne Image
+|--------------------------------------------------------------------------
+*/
+Route::prefix('polymorphic-one-to-one')->name('polymorphic-one-to-one.')->group(function (): void {
+    // morphTo side
+    Route::get('images', [ImageController::class, 'index'])->name('images.index');
+    Route::get('images/details', [ImageController::class, 'details'])->name('images.details');
+    Route::get('images/search', [ImageController::class, 'search'])->name('images.search');
+    Route::get('images/{image}/imageable', [ImageController::class, 'show'])->name('images.imageable.show');
+    Route::put('images/{image}/imageable', [ImageController::class, 'reassign'])->name('images.imageable.reassign');
+    Route::delete('images/{image}', [ImageController::class, 'destroy'])->name('images.destroy');
+
+    // morphOne side, {type} is a morph map alias: user or post
+    Route::get('{type}', [ImageableController::class, 'index'])->whereIn('type', ['user', 'post'])->name('imageables.index');
+    Route::get('{type}/{id}/image', [ImageableController::class, 'show'])->whereIn('type', ['user', 'post'])->whereNumber('id')->name('imageables.image.show');
+    Route::get('{type}/{id}/image/exists', [ImageableController::class, 'exists'])->whereIn('type', ['user', 'post'])->whereNumber('id')->name('imageables.image.exists');
+    Route::post('{type}/{id}/image', [ImageableController::class, 'create'])->whereIn('type', ['user', 'post'])->whereNumber('id')->name('imageables.image.create');
+    Route::put('{type}/{id}/image', [ImageableController::class, 'updateOrCreate'])->whereIn('type', ['user', 'post'])->whereNumber('id')->name('imageables.image.update-or-create');
+    Route::patch('{type}/{id}/image', [ImageableController::class, 'update'])->whereIn('type', ['user', 'post'])->whereNumber('id')->name('imageables.image.update');
+    Route::delete('{type}/{id}/image', [ImageableController::class, 'destroy'])->whereIn('type', ['user', 'post'])->whereNumber('id')->name('imageables.image.destroy');
+});
+
+
