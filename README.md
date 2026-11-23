@@ -42,6 +42,7 @@ Every relationship below has a working JSON API in this repository. Business log
 | Has One Through | [Laravel docs](https://laravel.com/docs/eloquent-relationships#has-one-through) | [`MechanicOwnerController`](app/Http/Controllers/Mechanic/MechanicOwnerController.php), [`CarOwnerController`](app/Http/Controllers/Car/CarOwnerController.php), [`OwnerMechanicController`](app/Http/Controllers/Owner/OwnerMechanicController.php) | [`app/Actions/Mechanic`](app/Actions/Mechanic), [`app/Actions/Car`](app/Actions/Car), [`app/Actions/Owner`](app/Actions/Owner) | `GET /api/has-one-through/mechanics` |
 | Has Many Through | [Laravel docs](https://laravel.com/docs/eloquent-relationships#has-many-through) | [`CountryPostController`](app/Http/Controllers/Country/CountryPostController.php), [`PostCountryController`](app/Http/Controllers/Post/PostCountryController.php) | [`app/Actions/Country`](app/Actions/Country), [`app/Actions/Post`](app/Actions/Post) | `GET /api/has-many-through/countries/stats` |
 | Polymorphic One To One | [Laravel docs](https://laravel.com/docs/eloquent-relationships#one-to-one-polymorphic-relations) | [`ImageableController`](app/Http/Controllers/Image/ImageableController.php), [`ImageController`](app/Http/Controllers/Image/ImageController.php) | [`app/Actions/Image`](app/Actions/Image) | `GET /api/polymorphic-one-to-one/images` |
+| Polymorphic One To Many | [Laravel docs](https://laravel.com/docs/eloquent-relationships#one-to-many-polymorphic-relations) | [`CommentableController`](app/Http/Controllers/Comment/CommentableController.php), [`CommentController`](app/Http/Controllers/Comment/CommentController.php) | [`app/Actions/Comment`](app/Actions/Comment) | `GET /api/polymorphic-one-to-many/comments` |
 
 The routes are in [`routes/api.php`](routes/api.php). Run `php artisan route:list --path=api` to see all of them.
 
@@ -66,7 +67,7 @@ Controller returns $this->success() / $this->created()   ← ApiResponse trait
 | Part | Location | Responsibility |
 |------|----------|----------------|
 | Controller | [`app/Http/Controllers`](app/Http/Controllers) | Read input, call one action, return JSON |
-| Action | [`app/Actions`](app/Actions) | One operation per class with an `execute()` method. Folders are named after models: `User`, `Phone`, `Post`, `Role`, `Mechanic`, `Car`, `Owner`, `Country`, `Image` |
+| Action | [`app/Actions`](app/Actions) | One operation per class with an `execute()` method. Folders are named after models: `User`, `Phone`, `Post`, `Role`, `Mechanic`, `Car`, `Owner`, `Country`, `Image`, `Comment` |
 | Form request | [`app/Http/Requests`](app/Http/Requests) | Validation rules |
 | JSON trait | [`app/Traits/ApiResponse.php`](app/Traits/ApiResponse.php) | `success()`, `created()`, `error()`, `notFound()`, `conflict()`. Used by the base [`Controller`](app/Http/Controllers/Controller.php), so every controller returns JSON |
 | Exceptions | [`app/Exceptions`](app/Exceptions) | `ResourceNotFoundException` (404) and `ResourceConflictException` (409) render themselves as JSON |
@@ -1260,6 +1261,49 @@ $post->comments;
 $comment->commentable;                    // Post or Video
 $post->comments()->create(['body' => 'Hi']); // sets both columns for you
 ```
+
+### Implemented in this repository
+
+- Official docs: [One To Many (Polymorphic)](https://laravel.com/docs/eloquent-relationships#one-to-many-polymorphic-relations)
+- Controllers: [`CommentableController`](app/Http/Controllers/Comment/CommentableController.php) and [`CommentController`](app/Http/Controllers/Comment/CommentController.php)
+- Actions: [`app/Actions/Comment`](app/Actions/Comment)
+- Seeder: [`CommentSeeder`](database/seeders/CommentSeeder.php)
+- Base URL: `/api/polymorphic-one-to-many`
+
+One action serves both parent types. `{type}` in the URL is a morph map alias (`post` or `video`) and [`ResolveCommentable`](app/Actions/Comment/ResolveCommentable.php) turns it into the model.
+
+**Parent side: `Post::comments()` and `Video::comments()` (`morphMany`)**
+
+| Method | URL | Action | Eloquent |
+|--------|-----|--------|----------|
+| `GET` | `/{type}?has_comments=1&min=2` | [`ListCommentables`](app/Actions/Comment/ListCommentables.php) | `withCount()` with a constraint, `has('comments', '>=', n)`, `doesntHave()` |
+| `GET` | `/{type}/{id}/comments` | [`ShowCommentableComments`](app/Actions/Comment/ShowCommentableComments.php) | `$model->comments` |
+| `GET` | `/{type}/{id}/comments/count` | [`CountCommentableComments`](app/Actions/Comment/CountCommentableComments.php) | `comments()->count()` |
+| `GET` | `/{type}/{id}/comments/latest` | [`FindLatestCommentableComment`](app/Actions/Comment/FindLatestCommentableComment.php) | `comments()->latest('id')->first()` |
+| `GET` | `/{type}/{id}/comments/filter?approved=0&term=great` | [`FilterCommentableComments`](app/Actions/Comment/FilterCommentableComments.php) | `comments()->when()->where()` |
+| `GET` | `/{type}/{id}/comments/{comment}` | [`FindCommentableComment`](app/Actions/Comment/FindCommentableComment.php) | scoped `find()`, 404 for another parent |
+| `POST` | `/{type}/{id}/comments/create` | [`CreateCommentableComment`](app/Actions/Comment/CreateCommentableComment.php) | `comments()->create()` |
+| `POST` | `/{type}/{id}/comments/create-many` | [`CreateCommentableComments`](app/Actions/Comment/CreateCommentableComments.php) | `createMany()` |
+| `POST` | `/{type}/{id}/comments/save` | [`SaveCommentableComment`](app/Actions/Comment/SaveCommentableComment.php) | `comments()->save()` |
+| `PATCH` | `/{type}/{id}/comments/{comment}` | [`UpdateCommentableComment`](app/Actions/Comment/UpdateCommentableComment.php) | scoped `find()`, then `update()` |
+| `PATCH` | `/{type}/{id}/comments` | [`UpdateCommentableComments`](app/Actions/Comment/UpdateCommentableComments.php) | `comments()->update()` |
+| `PATCH` | `/{type}/{id}/comments/approve` | [`ApproveCommentableComments`](app/Actions/Comment/ApproveCommentableComments.php) | `comments()->where()->update()` |
+| `DELETE` | `/{type}/{id}/comments/{comment}` | [`DeleteCommentableComment`](app/Actions/Comment/DeleteCommentableComment.php) | scoped `find()`, then `delete()` |
+| `DELETE` | `/{type}/{id}/comments` | [`DeleteCommentableComments`](app/Actions/Comment/DeleteCommentableComments.php) | `comments()->delete()` |
+
+**Child side: `Comment::commentable()` (`morphTo`)**
+
+| Method | URL | Action | Eloquent |
+|--------|-----|--------|----------|
+| `GET` | `/comments?type=post&approved=0` | [`ListComments`](app/Actions/Comment/ListComments.php) | `with('commentable')`, `where('commentable_type', ...)` |
+| `GET` | `/comments/details` | [`ListCommentsWithCommentableDetails`](app/Actions/Comment/ListCommentsWithCommentableDetails.php) | `morphWith()`, `morphWithCount()` |
+| `GET` | `/comments/search?term=Laravel` | [`SearchCommentsByCommentableTitle`](app/Actions/Comment/SearchCommentsByCommentableTitle.php) | `whereHasMorph()` |
+| `GET` | `/comments/{comment}/commentable` | [`ShowCommentable`](app/Actions/Comment/ShowCommentable.php) | `$comment->commentable` |
+| `PUT` | `/comments/{comment}/commentable` | [`ReassignComment`](app/Actions/Comment/ReassignComment.php) | `commentable()->associate()` |
+| `PATCH` | `/comments/{comment}` | [`UpdateComment`](app/Actions/Comment/UpdateComment.php) | `update()` |
+| `DELETE` | `/comments/{comment}` | [`DeleteComment`](app/Actions/Comment/DeleteComment.php) | `delete()` |
+
+Unlike the one-to-one version there is no unique index, so a parent can have any number of comments. Seed data: the first 4 posts get 2 comments each (1 not approved) and each video gets 1.
 
 ### Use a morph map (recommended)
 

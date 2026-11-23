@@ -15,6 +15,8 @@ use App\Http\Controllers\Owner\OwnerMechanicController;
 use App\Http\Controllers\Post\PostCountryController;
 use App\Http\Controllers\Image\ImageableController;
 use App\Http\Controllers\Image\ImageController;
+use App\Http\Controllers\Comment\CommentableController;
+use App\Http\Controllers\Comment\CommentController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -193,4 +195,34 @@ Route::prefix('polymorphic-one-to-one')->name('polymorphic-one-to-one.')->group(
     Route::delete('{type}/{id}/image', [ImageableController::class, 'destroy'])->whereIn('type', ['user', 'post'])->whereNumber('id')->name('imageables.image.destroy');
 });
 
+/*
+|--------------------------------------------------------------------------
+| Polymorphic One To Many: Post and Video morphMany Comment
+|--------------------------------------------------------------------------
+*/
+Route::prefix('polymorphic-one-to-many')->name('polymorphic-one-to-many.')->group(function (): void {
+    // morphTo side
+    Route::get('comments', [CommentController::class, 'index'])->name('comments.index');
+    Route::get('comments/details', [CommentController::class, 'details'])->name('comments.details');
+    Route::get('comments/search', [CommentController::class, 'search'])->name('comments.search');
+    Route::get('comments/{comment}/commentable', [CommentController::class, 'show'])->name('comments.commentable.show');
+    Route::put('comments/{comment}/commentable', [CommentController::class, 'reassign'])->name('comments.commentable.reassign');
+    Route::patch('comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
+    Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
+    // morphMany side, {type} is a morph map alias: post or video
+    Route::get('{type}', [CommentableController::class, 'index'])->whereIn('type', ['post', 'video'])->name('commentables.index');
+    Route::get('{type}/{id}/comments', [CommentableController::class, 'list'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.list');
+    Route::get('{type}/{id}/comments/count', [CommentableController::class, 'count'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.count');
+    Route::get('{type}/{id}/comments/latest', [CommentableController::class, 'latest'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.latest');
+    Route::get('{type}/{id}/comments/filter', [CommentableController::class, 'filter'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.filter');
+    Route::get('{type}/{id}/comments/{comment}', [CommentableController::class, 'find'])->whereIn('type', ['post', 'video'])->whereNumber('id')->whereNumber('comment')->name('commentables.comments.find');
+    Route::post('{type}/{id}/comments/create', [CommentableController::class, 'create'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.create');
+    Route::post('{type}/{id}/comments/create-many', [CommentableController::class, 'createMany'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.create-many');
+    Route::post('{type}/{id}/comments/save', [CommentableController::class, 'save'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.save');
+    Route::patch('{type}/{id}/comments/approve', [CommentableController::class, 'approve'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.approve');
+    Route::patch('{type}/{id}/comments', [CommentableController::class, 'updateAll'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.update-all');
+    Route::patch('{type}/{id}/comments/{comment}', [CommentableController::class, 'update'])->whereIn('type', ['post', 'video'])->whereNumber('id')->whereNumber('comment')->name('commentables.comments.update');
+    Route::delete('{type}/{id}/comments', [CommentableController::class, 'destroyAll'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.destroy-all');
+    Route::delete('{type}/{id}/comments/{comment}', [CommentableController::class, 'destroy'])->whereIn('type', ['post', 'video'])->whereNumber('id')->whereNumber('comment')->name('commentables.comments.destroy');
+});
