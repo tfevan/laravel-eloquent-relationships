@@ -43,6 +43,7 @@ Every relationship below has a working JSON API in this repository. Business log
 | Has Many Through | [Laravel docs](https://laravel.com/docs/eloquent-relationships#has-many-through) | [`CountryPostController`](app/Http/Controllers/Country/CountryPostController.php), [`PostCountryController`](app/Http/Controllers/Post/PostCountryController.php) | [`app/Actions/Country`](app/Actions/Country), [`app/Actions/Post`](app/Actions/Post) | `GET /api/has-many-through/countries/stats` |
 | Polymorphic One To One | [Laravel docs](https://laravel.com/docs/eloquent-relationships#one-to-one-polymorphic-relations) | [`ImageableController`](app/Http/Controllers/Image/ImageableController.php), [`ImageController`](app/Http/Controllers/Image/ImageController.php) | [`app/Actions/Image`](app/Actions/Image) | `GET /api/polymorphic-one-to-one/images` |
 | Polymorphic One To Many | [Laravel docs](https://laravel.com/docs/eloquent-relationships#one-to-many-polymorphic-relations) | [`CommentableController`](app/Http/Controllers/Comment/CommentableController.php), [`CommentController`](app/Http/Controllers/Comment/CommentController.php) | [`app/Actions/Comment`](app/Actions/Comment) | `GET /api/polymorphic-one-to-many/comments` |
+| Polymorphic Many To Many | [Laravel docs](https://laravel.com/docs/eloquent-relationships#many-to-many-polymorphic-relations) | [`TaggableController`](app/Http/Controllers/Tag/TaggableController.php), [`TagController`](app/Http/Controllers/Tag/TagController.php) | [`app/Actions/Tag`](app/Actions/Tag) | `GET /api/polymorphic-many-to-many/tags` |
 
 The routes are in [`routes/api.php`](routes/api.php). Run `php artisan route:list --path=api` to see all of them.
 
@@ -67,7 +68,7 @@ Controller returns $this->success() / $this->created()   ← ApiResponse trait
 | Part | Location | Responsibility |
 |------|----------|----------------|
 | Controller | [`app/Http/Controllers`](app/Http/Controllers) | Read input, call one action, return JSON |
-| Action | [`app/Actions`](app/Actions) | One operation per class with an `execute()` method. Folders are named after models: `User`, `Phone`, `Post`, `Role`, `Mechanic`, `Car`, `Owner`, `Country`, `Image`, `Comment` |
+| Action | [`app/Actions`](app/Actions) | One operation per class with an `execute()` method. Folders are named after models: `User`, `Phone`, `Post`, `Role`, `Mechanic`, `Car`, `Owner`, `Country`, `Image`, `Comment`, `Tag` |
 | Form request | [`app/Http/Requests`](app/Http/Requests) | Validation rules |
 | JSON trait | [`app/Traits/ApiResponse.php`](app/Traits/ApiResponse.php) | `success()`, `created()`, `error()`, `notFound()`, `conflict()`. Used by the base [`Controller`](app/Http/Controllers/Controller.php), so every controller returns JSON |
 | Exceptions | [`app/Exceptions`](app/Exceptions) | `ResourceNotFoundException` (404) and `ResourceConflictException` (409) render themselves as JSON |
@@ -1419,6 +1420,48 @@ $tag->videos;         // Collection<Video>
 $post->tags()->sync([1, 2]);
 ```
 
+### Implemented in this repository
+
+- Official docs: [Many To Many (Polymorphic)](https://laravel.com/docs/eloquent-relationships#many-to-many-polymorphic-relations)
+- Controllers: [`TaggableController`](app/Http/Controllers/Tag/TaggableController.php) and [`TagController`](app/Http/Controllers/Tag/TagController.php)
+- Actions: [`app/Actions/Tag`](app/Actions/Tag)
+- Seeder: [`TagSeeder`](database/seeders/TagSeeder.php)
+- Base URL: `/api/polymorphic-many-to-many`
+
+One action serves both parent types. `{type}` in the URL is a morph map alias (`post` or `video`) and [`ResolveTaggable`](app/Actions/Tag/ResolveTaggable.php) turns it into the model. The pivot table is `taggables` and has no extra columns.
+
+**Parent side: `Post::tags()` and `Video::tags()` (`morphToMany`)**
+
+| Method | URL | Action | Eloquent |
+|--------|-----|--------|----------|
+| `GET` | `/{type}?has_tags=0&tag=php` | [`ListTaggables`](app/Actions/Tag/ListTaggables.php) | `with()`, `withCount()`, `has()`, `doesntHave()`, `whereHas()` |
+| `GET` | `/{type}/{id}/tags` | [`ShowTaggableTags`](app/Actions/Tag/ShowTaggableTags.php) | `$model->tags`, pivot in `pivot` |
+| `GET` | `/{type}/{id}/tags/has?name=php` | [`CheckTaggableHasTag`](app/Actions/Tag/CheckTaggableHasTag.php) | `tags()->where()->exists()` |
+| `POST` | `/{type}/{id}/tags` | [`AttachTagToTaggable`](app/Actions/Tag/AttachTagToTaggable.php) | `attach()` |
+| `POST` | `/{type}/{id}/tags/create` | [`CreateTaggableTag`](app/Actions/Tag/CreateTaggableTag.php) | `tags()->create()` creates and attaches |
+| `PUT` | `/{type}/{id}/tags/sync` | [`SyncTaggableTags`](app/Actions/Tag/SyncTaggableTags.php) | `sync()` |
+| `PUT` | `/{type}/{id}/tags/sync-without-detaching` | [`SyncTaggableTagsWithoutDetaching`](app/Actions/Tag/SyncTaggableTagsWithoutDetaching.php) | `syncWithoutDetaching()` |
+| `POST` | `/{type}/{id}/tags/toggle` | [`ToggleTaggableTags`](app/Actions/Tag/ToggleTaggableTags.php) | `toggle()` |
+| `DELETE` | `/{type}/{id}/tags/{tag}` | [`DetachTaggableTags`](app/Actions/Tag/DetachTaggableTags.php) | `detach($id)` |
+| `DELETE` | `/{type}/{id}/tags` | [`DetachTaggableTags`](app/Actions/Tag/DetachTaggableTags.php) | `detach()` without an id removes all |
+
+**Tag side: `Tag::posts()` and `Tag::videos()` (`morphedByMany`)**
+
+| Method | URL | Action | Eloquent |
+|--------|-----|--------|----------|
+| `GET` | `/tags?used=0` | [`ListTags`](app/Actions/Tag/ListTags.php) | `withCount(['posts', 'videos'])`, `has()`, `doesntHave()` |
+| `GET` | `/tags/by-type/{type}` | [`ListTagsByTaggableType`](app/Actions/Tag/ListTagsByTaggableType.php) | `has('posts')` or `has('videos')` |
+| `POST` | `/tags` | [`CreateTag`](app/Actions/Tag/CreateTag.php) | `create()` |
+| `PATCH` | `/tags/{tag}` | [`UpdateTag`](app/Actions/Tag/UpdateTag.php) | `update()` |
+| `DELETE` | `/tags/{tag}` | [`DeleteTag`](app/Actions/Tag/DeleteTag.php) | `delete()`, pivot rows go with the cascade |
+| `GET` | `/tags/{tag}/{type}` | [`ShowTagTaggables`](app/Actions/Tag/ShowTagTaggables.php) | `$tag->posts()` or `$tag->videos()` |
+| `POST` | `/tags/{tag}/{type}` | [`AttachTaggableToTag`](app/Actions/Tag/AttachTaggableToTag.php) | `attach()` from the tag side |
+| `PUT` | `/tags/{tag}/{type}/sync` | [`SyncTagTaggables`](app/Actions/Tag/SyncTagTaggables.php) | `sync()` |
+| `DELETE` | `/tags/{tag}/{type}/{id}` | [`DetachTaggableFromTag`](app/Actions/Tag/DetachTaggableFromTag.php) | `detach($id)` |
+| `DELETE` | `/tags/{tag}/{type}` | [`DetachTaggableFromTag`](app/Actions/Tag/DetachTaggableFromTag.php) | `detach()` without an id removes all |
+
+A `{type}` such as `post` is the alias stored in `taggables.taggable_type`. Payloads: attach `{"tag_id": 1}`, create `{"name": "api"}`, sync and toggle `{"tags": [1, 2]}`, tag side attach `{"id": 5}`, tag side sync `{"ids": [1, 2, 3]}`.
+
 ---
 
 ## 13. Self-Referencing Relationships
@@ -1687,3 +1730,7 @@ $post->comments->first()->post; // no extra query, parent is reused
 ## 21. License
 
 Released under the [MIT License](LICENSE).
+
+---
+
+Created By [Talha F.](https://talhaf.com/?ref=github-laravel-eloquent-relationships)

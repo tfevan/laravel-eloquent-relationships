@@ -17,6 +17,8 @@ use App\Http\Controllers\Image\ImageableController;
 use App\Http\Controllers\Image\ImageController;
 use App\Http\Controllers\Comment\CommentableController;
 use App\Http\Controllers\Comment\CommentController;
+use App\Http\Controllers\Tag\TaggableController;
+use App\Http\Controllers\Tag\TagController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -225,4 +227,35 @@ Route::prefix('polymorphic-one-to-many')->name('polymorphic-one-to-many.')->grou
     Route::patch('{type}/{id}/comments/{comment}', [CommentableController::class, 'update'])->whereIn('type', ['post', 'video'])->whereNumber('id')->whereNumber('comment')->name('commentables.comments.update');
     Route::delete('{type}/{id}/comments', [CommentableController::class, 'destroyAll'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('commentables.comments.destroy-all');
     Route::delete('{type}/{id}/comments/{comment}', [CommentableController::class, 'destroy'])->whereIn('type', ['post', 'video'])->whereNumber('id')->whereNumber('comment')->name('commentables.comments.destroy');
+});
+
+/*
+|--------------------------------------------------------------------------
+| Polymorphic Many To Many: Post and Video morphToMany Tag
+|--------------------------------------------------------------------------
+*/
+Route::prefix('polymorphic-many-to-many')->name('polymorphic-many-to-many.')->group(function (): void {
+    // tag side
+    Route::get('tags', [TagController::class, 'index'])->name('tags.index');
+    Route::post('tags', [TagController::class, 'store'])->name('tags.store');
+    Route::get('tags/by-type/{type}', [TagController::class, 'byType'])->whereIn('type', ['post', 'video'])->name('tags.by-type');
+    Route::patch('tags/{tag}', [TagController::class, 'update'])->whereNumber('tag')->name('tags.update');
+    Route::delete('tags/{tag}', [TagController::class, 'destroy'])->whereNumber('tag')->name('tags.destroy');
+    Route::get('tags/{tag}/{type}', [TagController::class, 'show'])->whereIn('type', ['post', 'video'])->whereNumber('tag')->name('tags.taggables.show');
+    Route::post('tags/{tag}/{type}', [TagController::class, 'attach'])->whereIn('type', ['post', 'video'])->whereNumber('tag')->name('tags.taggables.attach');
+    Route::put('tags/{tag}/{type}/sync', [TagController::class, 'sync'])->whereIn('type', ['post', 'video'])->whereNumber('tag')->name('tags.taggables.sync');
+    Route::delete('tags/{tag}/{type}', [TagController::class, 'detachAll'])->whereIn('type', ['post', 'video'])->whereNumber('tag')->name('tags.taggables.detach-all');
+    Route::delete('tags/{tag}/{type}/{id}', [TagController::class, 'detach'])->whereIn('type', ['post', 'video'])->whereNumber('tag')->whereNumber('id')->name('tags.taggables.detach');
+
+    // morphToMany side, {type} is a morph map alias: post or video
+    Route::get('{type}', [TaggableController::class, 'index'])->whereIn('type', ['post', 'video'])->name('taggables.index');
+    Route::get('{type}/{id}/tags', [TaggableController::class, 'show'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('taggables.tags.show');
+    Route::get('{type}/{id}/tags/has', [TaggableController::class, 'has'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('taggables.tags.has');
+    Route::post('{type}/{id}/tags', [TaggableController::class, 'attach'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('taggables.tags.attach');
+    Route::post('{type}/{id}/tags/create', [TaggableController::class, 'create'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('taggables.tags.create');
+    Route::put('{type}/{id}/tags/sync', [TaggableController::class, 'sync'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('taggables.tags.sync');
+    Route::put('{type}/{id}/tags/sync-without-detaching', [TaggableController::class, 'syncWithoutDetaching'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('taggables.tags.sync-without-detaching');
+    Route::post('{type}/{id}/tags/toggle', [TaggableController::class, 'toggle'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('taggables.tags.toggle');
+    Route::delete('{type}/{id}/tags', [TaggableController::class, 'detachAll'])->whereIn('type', ['post', 'video'])->whereNumber('id')->name('taggables.tags.detach-all');
+    Route::delete('{type}/{id}/tags/{tag}', [TaggableController::class, 'detach'])->whereIn('type', ['post', 'video'])->whereNumber('id')->whereNumber('tag')->name('taggables.tags.detach');
 });
